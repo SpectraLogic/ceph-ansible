@@ -82,6 +82,11 @@ options:
             - If wal is a lv, this must be the name of the volume group it belongs to.  # noqa E501
             - Only applicable if objectstore is 'bluestore'.
         required: false
+    block_wal_auto:
+        description:
+            - If true, in batch mode, SSDs in a mixed SSD/HDD system will be used as a Block WAL instead of Block DB
+            - Only applies if objectstore is 'bluestore', and in the batch case.
+        required: false
     crush_device_class:
         description:
             - Will set the crush device class for the OSD.
@@ -281,6 +286,7 @@ def batch(module, container_image):
     block_db_size = module.params.get('block_db_size', None)
     block_db_devices = module.params.get('block_db_devices', None)
     wal_devices = module.params.get('wal_devices', None)
+    block_wal_auto = module.params.get('block_wal_auto', None)
     dmcrypt = module.params.get('dmcrypt', None)
     osds_per_device = module.params.get('osds_per_device', 1)
 
@@ -307,6 +313,9 @@ def batch(module, container_image):
 
     if dmcrypt:
         cmd.append('--dmcrypt')
+
+    if block_wal_auto:
+        cmd.append('--block-wal-auto')
 
     if osds_per_device > 1:
         cmd.extend(['--osds-per-device', str(osds_per_device)])
@@ -509,6 +518,7 @@ def run_module():
         wal_vg=dict(type='str', required=False),
         crush_device_class=dict(type='str', required=False),
         dmcrypt=dict(type='bool', required=False, default=False),
+        block_wal_auto=dict(type='bool', required=False, default=False),
         batch_devices=dict(type='list', required=False, default=[]),
         osds_per_device=dict(type='int', required=False, default=1),
         journal_size=dict(type='str', required=False, default='5120'),
