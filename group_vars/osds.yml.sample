@@ -57,6 +57,10 @@ dummy:
 
 #bluestore_wal_devices: []
 
+# 'block_wal_auto' if true will automatically configure SSD block devices as block.wal devices
+#
+#block_wal_auto: false
+
 #'osd_auto_discovery'  mode prevents you from filling out the 'devices' variable above.
 # Device discovery is based on the Ansible fact 'ansible_devices'
 # which reports all the devices on a system. If chosen, all the disks
@@ -211,4 +215,3 @@ dummy:
 
 #nb_retry_wait_osd_up: 60
 #delay_wait_osd_up: 10
-
