@@ -82,6 +82,10 @@ dummy:
 ############
 #debian_package_dependencies: []
 
+# Spectra: 
+# debian_update_cache is not configured for all uses of "update_cache:" 
+#debian_update_cache: true
+
 #centos_package_dependencies:
 #  - epel-release
 #  - libselinux-python
