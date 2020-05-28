@@ -11,10 +11,6 @@
 - name: import_tasks container_binary.yml
   import_tasks: container_binary.yml
 
-- name: set_fact is_podman
-  set_fact:
-    is_podman: "{{ podman_binary.stat.exists }}"
-
 # In case ansible_python_interpreter is set by the user,
 # ansible will not discover python and discovered_interpreter_python
 # will not be set
@@ -30,13 +26,12 @@
 
 - name: set_fact monitor_name ansible_hostname
   set_fact:
-    monitor_name: "{{ ansible_hostname }}"
-  when: not mon_use_fqdn | bool
-
-- name: set_fact monitor_name ansible_fqdn
-  set_fact:
-    monitor_name: "{{ ansible_fqdn }}"
-  when: mon_use_fqdn | bool
+    monitor_name: "{{ hostvars[item]['ansible_hostname'] }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: true
+  with_items: "{{ groups.get(mon_group_name, []) }}"
+  run_once: true
+  when: groups.get(mon_group_name, []) | length > 0
 
 - name: find a running monitor
   when: groups.get(mon_group_name, []) | length > 0
@@ -89,7 +84,7 @@
       when:
         - not containerized_deployment | bool
         - item.rc is defined
-        - item.rc == 1
+        - item.rc == 0
 
     - name: set_fact running_mon - container
       set_fact:
@@ -102,7 +97,7 @@
 
     - name: set_fact _container_exec_cmd
       set_fact:
-        _container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] if running_mon is undefined else running_mon }}"
+        _container_exec_cmd: "{{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0] if running_mon is undefined else running_mon]['ansible_hostname'] }}"
       when:
         - containerized_deployment | bool
 
@@ -180,30 +175,6 @@
 - name: set_fact mds_name ansible_hostname
   set_fact:
     mds_name: "{{ ansible_hostname }}"
-  when: not mds_use_fqdn | bool
-
-- name: set_fact mds_name ansible_fqdn
-  set_fact:
-    mds_name: "{{ ansible_fqdn }}"
-  when: mds_use_fqdn | bool
-
-- name: set_fact rbd_client_directory_owner ceph
-  set_fact:
-    rbd_client_directory_owner: ceph
-  when: rbd_client_directory_owner is not defined
-      or not rbd_client_directory_owner
-
-- name: set_fact rbd_client_directory_group rbd_client_directory_group
-  set_fact:
-    rbd_client_directory_group: ceph
-  when: rbd_client_directory_group is not defined
-      or not rbd_client_directory_group
-
-- name: set_fact rbd_client_directory_mode 0770
-  set_fact:
-    rbd_client_directory_mode: "0770"
-  when: rbd_client_directory_mode is not defined
-      or not rbd_client_directory_mode
 
 - name: resolve device link(s)
   command: readlink -f {{ item }}
@@ -239,6 +210,7 @@
   with_dict: "{{ ansible_devices }}"
   when:
     - osd_auto_discovery | default(False) | bool
+    - inventory_hostname in groups.get(osd_group_name, [])
     - ansible_devices is defined
     - item.value.removable == "0"
     - item.value.sectors != "0"
@@ -252,31 +224,6 @@
   when:
     - not containerized_deployment | bool
     - ansible_os_family == 'Debian'
-
-- name: set_fact ceph_uid for red hat or suse based system - non container
-  set_fact:
-    ceph_uid: 167
-  when:
-    - not containerized_deployment | bool
-    - ansible_os_family in ['RedHat', 'Suse']
-
-- name: set_fact ceph_uid for debian based system - container
-  set_fact:
-    ceph_uid: 64045
-  when:
-    - containerized_deployment | bool
-    - ceph_docker_image_tag | string is search("ubuntu")
-
-- name: set_fact ceph_uid for red hat based system - container
-  set_fact:
-    ceph_uid: 167
-  when:
-    - containerized_deployment | bool
-    - (ceph_docker_image_tag | string is search("latest")
-      or ceph_docker_image_tag | string is search("centos")
-      or ceph_docker_image_tag | string is search("fedora")
-      or ceph_docker_image_tag | string is search("rhceph")
-      or (ansible_distribution == 'RedHat'))
 
 - name: set_fact rgw_hostname
   set_fact:
@@ -320,8 +267,7 @@
 
 - name: set_fact osd_pool_default_crush_rule
   set_fact:
-    osd_pool_default_crush_rule: "{% if crush_rule_variable.rc == 0 %}{{ crush_rule_variable.stdout.split(' = ')[1] }}{% else %}{{ ceph_osd_pool_default_crush_rule }}{% endif %}"
-  when: ceph_conf.stat.exists
+    osd_pool_default_crush_rule: "{{ crush_rule_variable.stdout.split(' = ')[1] if crush_rule_variable.get('rc', 1) | int == 0 else ceph_osd_pool_default_crush_rule }}"
 
 - name: import_tasks set_monitor_address.yml
   import_tasks: set_monitor_address.yml
@@ -331,13 +277,27 @@
   import_tasks: set_radosgw_address.yml
   when: inventory_hostname in groups.get(rgw_group_name, [])
 
-- name: set_fact rgw_instances
-  set_fact:
-    rgw_instances: "{{ rgw_instances|default([]) | union([{'instance_name': 'rgw' + item|string, 'radosgw_address': _radosgw_address, 'radosgw_frontend_port': radosgw_frontend_port|int + item|int}]) }}"
-  with_sequence: start=0 end={{ radosgw_num_instances|int - 1 }}
-  when: inventory_hostname in groups.get(rgw_group_name, [])
-
 - name: set_fact use_new_ceph_iscsi package or old ceph-iscsi-config/cli
   set_fact:
     use_new_ceph_iscsi: "{{ (gateway_ip_list  == '0.0.0.0' and gateway_iqn | length == 0 and client_connections | length == 0 and rbd_devices | length == 0) | bool | ternary(true, false) }}"
   when: iscsi_gw_group_name in group_names
+
+- name: set_fact ceph_run_cmd
+  set_fact:
+    ceph_run_cmd: "{{ container_binary + ' run --rm --net=host -v /etc/ceph:/etc/ceph:z -v /var/lib/ceph/:/var/lib/ceph/:z -v /var/log/ceph/:/var/log/ceph/:z --entrypoint=ceph ' + ceph_docker_registry + '/' + ceph_docker_image + ':' + ceph_docker_image_tag if containerized_deployment else 'ceph' }}"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: True
+  with_items:
+    - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ inventory_hostname }}"
+
+- name: set_fact ceph_admin_command
+  set_fact:
+    ceph_admin_command: "{{ ceph_run_cmd }} -n client.admin -k /etc/ceph/{{ cluster }}.client.admin.keyring"
+  delegate_to: "{{ item }}"
+  delegate_facts: True
+  run_once: True
+  with_items:
+    - "{{ groups[mon_group_name] if groups[mon_group_name] | default([]) | length > 0 else [] }}"
+    - "{{ inventory_hostname }}"

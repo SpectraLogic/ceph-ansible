@@ -56,8 +56,6 @@
 
 - name: switching from non-containerized to containerized ceph mon
   vars:
-    health_mon_check_retries: 5
-    health_mon_check_delay: 15
     containerized_deployment: true
     switch_to_containers: True
     mon_group_name:       mons
@@ -194,11 +192,26 @@
         name: ceph-mgr
 
 
+- name: set osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd set {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
+
+
 - name: switching from non-containerized to containerized ceph osd
 
   vars:
-    health_osd_check_retries: 5
-    health_osd_check_delay: 15
     containerized_deployment: true
     osd_group_name: osds
 
@@ -293,12 +306,6 @@
         name: ceph-osd
 
   post_tasks:
-    - name: get num_pgs
-      command: >
-        {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
-      register: ceph_pgs
-      delegate_to: "{{ groups[mon_group_name][0] }}"
-
     - name: container - waiting for clean pgs...
       command: >
         {{ container_binary }} exec ceph-mon-{{ hostvars[groups[mon_group_name][0]]['ansible_hostname'] }} ceph --cluster {{ cluster }} -s --format json
@@ -306,12 +313,27 @@
       until: >
         (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | length) > 0)
         and
-        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_pgs.stdout | from_json).pgmap.num_pgs)
+        (((ceph_health_post.stdout | from_json).pgmap.pgs_by_state | selectattr('state_name', 'search', '^active\\+clean') | map(attribute='count') | list | sum) == (ceph_health_post.stdout | from_json).pgmap.num_pgs)
       delegate_to: "{{ groups[mon_group_name][0] }}"
       retries: "{{ health_osd_check_retries }}"
       delay: "{{ health_osd_check_delay }}"
-      when: (ceph_pgs.stdout | from_json).pgmap.num_pgs != 0
 
+
+- name: unset osd flags
+  hosts: "{{ mon_group_name | default('mons') }}[0]"
+  become: True
+  tasks:
+    - import_role:
+        name: ceph-defaults
+    - import_role:
+        name: ceph-facts
+        tasks_from: container_binary.yml
+
+    - name: set osd flags
+      command: "{{ container_exec_cmd | default('') }} ceph --cluster {{ cluster }} osd unset {{ item }}"
+      with_items:
+        - noout
+        - nodeep-scrub
 
 - name: switching from non-containerized to containerized ceph mds
 

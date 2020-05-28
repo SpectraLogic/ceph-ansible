@@ -20,11 +20,7 @@ numactl \
   {% if osd_objectstore == 'filestore' -%}
   --memory={{ ceph_osd_docker_memory_limit }} \
   {% endif -%}
-  {% if (container_binary == 'docker' and ceph_docker_version.split('.')[0] is version_compare('13', '>=')) or container_binary == 'podman' -%}
   --cpus={{ cpu_limit }} \
-  {% else -%}
-  --cpu-quota={{ cpu_limit * 100000 }} \
-  {% endif -%}
   {% if ceph_osd_docker_cpuset_cpus is defined -%}
   --cpuset-cpus='{{ ceph_osd_docker_cpuset_cpus }}' \
   {% endif -%}
@@ -41,11 +37,7 @@ numactl \
   {% if ansible_distribution == 'Ubuntu' -%}
   --security-opt apparmor:unconfined \
   {% endif -%}
-  {% if dmcrypt -%}
-  -e OSD_DMCRYPT=1 \
-  {% else -%}
-  -e OSD_DMCRYPT=0 \
-  {% endif -%}
+  {{ container_env_args }} \
   -e CLUSTER={{ cluster }} \
   {% if (ceph_tcmalloc_max_total_thread_cache | int) > 0 and osd_objectstore == 'filestore' -%}
   -e TCMALLOC_MAX_TOTAL_THREAD_CACHE_BYTES={{ ceph_tcmalloc_max_total_thread_cache }} \

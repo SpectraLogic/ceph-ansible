@@ -3,25 +3,15 @@
   gather_facts: True
   become: True
   vars:
-    s3cmd_cmd: "s3cmd --no-ssl --access_key={{ system_access_key }} --secret_key={{ system_secret_key }} --host={{ rgw_multisite_endpoint_addr }}:8080 --host-bucket={{ rgw_multisite_endpoint_addr }}:8080"
+    s3cmd_cmd: "s3cmd --no-ssl --access_key=P9Eb6S8XNyo4dtZZUUMy --secret_key=qqHCUtfdNnpHq3PZRHW5un9l0bEBM812Uhow0XfB --host={{ rgw_multisite_endpoint_addr }}:8080 --host-bucket={{ rgw_multisite_endpoint_addr }}:8080"
   tasks:
-
-    - name: check if it is Atomic host
-      stat: path=/run/ostree-booted
-      register: stat_ostree
-      check_mode: no
-
-    - name: set fact for using Atomic host
-      set_fact:
-        is_atomic: '{{ stat_ostree.stat.exists }}'
-
     - name: install s3cmd
       package:
         name: s3cmd
         state: present
       register: result
       until: result is succeeded
-      when: not is_atomic | bool
+      when: not containerized_deployment | default(false) | bool
 
     - name: generate and upload a random 10Mb file - containerized deployment
       command: >

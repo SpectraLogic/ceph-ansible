@@ -89,13 +89,6 @@
         - item.data is undefined
       with_items: '{{ lvm_volumes }}'
 
-- name: warning deprecation for fqdn configuration
-  fail:
-    msg: "fqdn configuration is not supported anymore. Use 'use_fqdn_yes_i_am_sure: true' if you really want to use it. See release notes for more details"
-  when:
-    - mon_use_fqdn | bool or mds_use_fqdn | bool
-    - not use_fqdn_yes_i_am_sure | bool
-
 - name: debian based systems tasks
   when: ansible_os_family == 'Debian'
   block:
@@ -103,15 +96,13 @@
       fail:
         msg: "'local' installation scenario not supported on Debian systems"
       when: ceph_origin == 'local'
-    - name: verify that ceph_rhcs_cdn_debian_repo url is valid for red hat storage
+
+    - name: fail if rhcs repository is enabled on debian
       fail:
-        msg: "ceph_rhcs_cdn_debian_repo url is invalid, please set your customername:customerpasswd"
+        msg: "RHCS isn't supported anymore on Debian distribution"
       when:
         - ceph_origin == 'repository'
         - ceph_repository == 'rhcs'
-        - ceph_repository_type == 'cdn'
-        - ceph_rhcs_cdn_debian_repo == 'https://customername:customerpasswd@rhcs.download.redhat.com'
-        - ceph_repository not in ['rhcs', 'dev', 'obs']
 
 # SUSE/openSUSE Leap only supports the following:
 # - ceph_origin == 'distro'
@@ -187,6 +178,12 @@
     - radosgw_address == "x.x.x.x"
     - radosgw_address_block == "subnet"
 
+- name: include check_rgw_pools.yml
+  include_tasks: check_rgw_pools.yml
+  when:
+    - inventory_hostname in groups.get(rgw_group_name, [])
+    - rgw_create_pools is defined
+
 - name: include check_rgw_multisite.yml
   include_tasks: check_rgw_multisite.yml
   when:
@@ -224,6 +221,13 @@
       fail:
         msg: "you must add at least one node in the [grafana-server] hosts group"
       when: groups[grafana_server_group_name] | length < 1
+
+    - name: fail when dashboard_admin_password and/or grafana_admin_password are not set
+      fail:
+        msg: "you must set dashboard_admin_password and grafana_admin_password."
+      when:
+        - dashboard_admin_password is undefined
+          or grafana_admin_password is undefined
   when: dashboard_enabled | bool
 
 - name: validate container registry credentials
@@ -233,3 +237,25 @@
     - ceph_docker_registry_auth | bool
     - (ceph_docker_registry_username is not defined or ceph_docker_registry_password is not defined) or
       (ceph_docker_registry_username | length == 0 or ceph_docker_registry_password | length == 0)
+
+- name: validate openstack_keys key format
+  fail:
+    msg: '{{ item.name }} key format invalid'
+  with_items: '{{ openstack_keys }}'
+  when:
+    - osd_group_name in group_names
+    - openstack_keys is defined
+    - openstack_keys | length > 0
+    - item.key is defined
+    - item.key is not match("^[a-zA-Z0-9+/]{38}==$")
+
+- name: validate clients keys key format
+  fail:
+    msg: '{{ item.name }} key format invalid'
+  with_items: '{{ keys }}'
+  when:
+    - client_group_name in group_names
+    - keys is defined
+    - keys | length > 0
+    - item.key is defined
+    - item.key is not match("^[a-zA-Z0-9+/]{38}==$")

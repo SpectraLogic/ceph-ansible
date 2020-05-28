@@ -79,7 +79,9 @@ The ``master`` branch should be considered experimental and used with caution.
 
 - ``stable-4.0`` Supports Ceph version ``nautilus``. This branch requires Ansible version ``2.8``.
 
-- ``master`` Supports the master branch of Ceph. This branch requires Ansible version ``2.8``.
+- ``stable-5.0`` Supports Ceph version ``octopus``. This branch requires Ansible version ``2.9``.
+
+- ``master`` Supports the master branch of Ceph. This branch requires Ansible version ``2.9``.
 
 Configuration and Usage
 =======================
@@ -272,6 +274,17 @@ that scenario. As of nautilus in stable-4.0, the only scenarios available is ``l
 
    osds/scenarios
 
+Day-2 Operations
+----------------
+
+ceph-ansible provides a set of playbook in ``infrastructure-playbooks`` directory in order to perform some basic day-2 operations.
+
+.. toctree::
+   :maxdepth: 1
+
+   day-2/osds
+   day-2/purge
+
 Contribution
 ============
 
@@ -296,7 +309,7 @@ Demos
 Vagrant Demo
 ------------
 
-Deployment from scratch on bare metal machines: https://youtu.be/E8-96NamLDo
+Deployment from scratch on vagrant machines: https://youtu.be/E8-96NamLDo
 
 Bare metal demo
 ---------------
