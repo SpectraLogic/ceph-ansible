@@ -107,7 +107,7 @@ pipeline {
             when { expression { keepgoing && !buildTest } }
             steps {
                 sh "sudo mkdir -pm 777 ${env.ARTIFACTS_DST_DIR}/ || true"
-		sh "sudo tar -czvf ${env.ARTIFACTS_TAR} -C ${env.WORK_DIR} --dereference ${env.BASE_NAME}"
+		sh "sudo tar -czvf ${env.ARTIFACTS_TAR} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
 		sh "sudo chmod 666 ${env.ARTIFACTS_TAR}"
             }
         }
