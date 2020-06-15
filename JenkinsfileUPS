@@ -133,7 +133,10 @@ pipeline {
                 sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
                 sh "cp -av ${env.ARCHIVE_TAR} ${env.WWW_DST_DIR}/${env.TAR_NAME}"
                 sh "sudo chmod 666 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
-                sh "sudo cd ${env.WWW_DST_DIR} && ln -sf ${env.TAR_NAME} latest"
+
+                dir("${WWW_DST_DIR}") {
+                    sh "ln -sf ${env.TAR_NAME} latest"
+                }
             }
         }
 
