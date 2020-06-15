@@ -60,10 +60,8 @@ pipeline {
     }
 
     parameters {
-        string(defaultValue: '/scratch/packages/ceph-ansible', description: 'Path to package archive, branch added ' +
-                'automatically', name: 'ARCHIVE_ROOT')
         string(defaultValue: '/scratch/www/local/ceph-ansible', description: 'Path to package repo server ' +
-                '(production only), branch added automatically', name: 'WWW_ROOT')
+                'branch added automatically', name: 'WWW_ROOT')
     }
 
     environment {
@@ -77,12 +75,8 @@ pipeline {
 	TAR_NAME = "ceph-ansible-${env.BASE_NAME}.tgz"
 	WORK_DIR = "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 
-	ARCHIVE_DST_DIR = "${params.ARCHIVE_ROOT}/${env.BRANCH_NAME}"
-	ARCHIVE_TAR = "${env.ARCHIVE_DST_DIR}/${env.TAR_NAME}"
-	ARCHIVE_TOKEEP = "26"
-
 	WWW_DST_DIR = "${params.WWW_ROOT}/${env.BRANCH_NAME}"
-	WWW_TOKEEP = "6"
+	WWW_TOKEEP = "26"
     }
     stages {
         stage('CheckCause') {
@@ -121,12 +115,8 @@ pipeline {
         stage('Archive') {
             when { expression { keepgoing && !buildTest } }
             steps {
-                sh "sudo mkdir -pm 777 ${env.ARCHIVE_DST_DIR}/ || true"
-                sh "sudo tar -czvf ${env.ARCHIVE_TAR} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
-                sh "sudo chmod 664 ${env.ARCHIVE_TAR}"
-
                 sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
-                sh "cp -av ${env.ARCHIVE_TAR} ${env.WWW_DST_DIR}/${env.TAR_NAME}"
+                sh "sudo tar -czvf ${env.WWW_DST_DIR}/${env.TAR_NAME} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
                 sh "sudo chmod 664 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
 
                 dir("${WWW_DST_DIR}") {
@@ -141,7 +131,6 @@ pipeline {
         stage('ArtifactClean') {
             when { expression { keepgoing && !buildTest } }
             steps {
-                sh "sudo ls -1t ${env.ARCHIVE_DST_DIR}/ceph-ansible*.tgz| tail -n +${env.ARCHIVE_TOKEEP} | xargs rm -f"
                 sh "sudo ls -1t ${env.WWWW_DST_DIR}/ceph-ansible*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
             }
         }
