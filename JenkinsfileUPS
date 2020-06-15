@@ -43,7 +43,7 @@ def sendNotification(color, buildStatus) {
     slackSend(color: color, message: buildStatus + ": ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|open>)")
 }
 
-def definePackgeName() {
+def definePackageName() {
     if (params.PRODUCTION) {
     	return "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
     }
@@ -72,8 +72,8 @@ pipeline {
 	// a symlik is created in ${WORK_DIR} that points
 	// back to ${WORKSPACE} and then we tar with --dereference
         //	
-	BASE_NAME = definePackagName()
-	WORK_DIR= "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
+	BASE_NAME = definePackageName()
+	WORK_DIR = "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 	ARTIFACTS_DST_DIR = "${params.BUILD_PKG_ROOT}/${env.BRANCH_NAME}"
 	ARTIFACTS_TAR = "${env.ARTIFACTS_DST_DIR}/ceph-ansible-${env.BASE_NAME}.tgz"
 	NON_PRODUCTION_ARTIFACTS_TO_KEEP = "5"
@@ -131,7 +131,7 @@ pipeline {
         stage('ArtifactClean') {
             when { expression { keepgoing && !params.PRODUCTION && !buildTest } }
             steps {
-                sh "sudo ls -1t | tail -n +${env.NON_PRODUCTION_ARTIFACTS_TO_KEEP} | xargs rm -f"
+                sh "sudo ls -1t ${env.ARTIFACTS_DST_DIR}/*-dev-*.tgz| tail -n +${env.NON_PRODUCTION_ARTIFACTS_TO_KEEP} | xargs rm -f"
             }
         }
     }
