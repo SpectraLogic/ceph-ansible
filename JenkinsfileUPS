@@ -123,7 +123,7 @@ pipeline {
             steps {
                 sh "sudo mkdir -pm 777 ${env.ARCHIVE_DST_DIR}/ || true"
                 sh "sudo tar -czvf ${env.ARCHIVE_TAR} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
-                sh "sudo chmod 666 ${env.ARCHIVE_TAR}"
+                sh "sudo chmod 664 ${env.ARCHIVE_TAR}"
             }
         }
 
@@ -132,11 +132,12 @@ pipeline {
             steps {
                 sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
                 sh "cp -av ${env.ARCHIVE_TAR} ${env.WWW_DST_DIR}/${env.TAR_NAME}"
-                sh "sudo chmod 666 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
+                sh "sudo chmod 664 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
 
                 dir("${WWW_DST_DIR}") {
                     sh "ln -sf ${env.TAR_NAME} latest"
                 }
+		sudo "rm -f ${env.WWW_DST_DIR}@tmp"
             }
         }
 
