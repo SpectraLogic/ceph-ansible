@@ -2,7 +2,6 @@ final FAILURE = '#FF0000'
 
 def keepgoing = true
 def buildTest = JOB_NAME.contains("BuildTest")
-def nonProductionToKeep = 5
 
 
 def getPreviousStatus(build) {
@@ -77,7 +76,7 @@ pipeline {
 	WORK_DIR= "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 	ARTIFACTS_DST_DIR = "${params.BUILD_PKG_ROOT}/${env.BRANCH_NAME}"
 	ARTIFACTS_TAR = "${env.ARTIFACTS_DST_DIR}/ceph-ansible-${env.BASE_NAME}.tgz"
-	ARTIFACTS_TO_KEEP = nonProductionToKeep
+	NON_PRODUCTION_ARTIFACTS_TO_KEEP = "5"
     }
     stages {
         stage('CheckCause') {
@@ -130,9 +129,9 @@ pipeline {
         }
 
         stage('ArtifactClean') {
-            when { expression { keepgoing && !params.PRODUCTION} && !buildTest}
+            when { expression { keepgoing && !params.PRODUCTION && !buildTest } }
             steps {
-                sh "sudo ls -1t | tail -n +${env.ARTIFACTS_TO_KEEP} | xargs rm -f"
+                sh "sudo ls -1t | tail -n +${env.NON_PRODUCTION_ARTIFACTS_TO_KEEP} | xargs rm -f"
             }
         }
     }
