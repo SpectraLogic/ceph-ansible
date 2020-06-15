@@ -2,7 +2,7 @@ final FAILURE = '#FF0000'
 
 def keepgoing = true
 def buildTest = JOB_NAME.contains("BuildTest")
-def branchCodeName = 'focal'
+def nonProductionToKeep = 5
 
 
 def getPreviousStatus(build) {
@@ -44,6 +44,14 @@ def sendNotification(color, buildStatus) {
     slackSend(color: color, message: buildStatus + ": ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|open>)")
 }
 
+def definePackgeName() {
+    if (params.PRODUCTION) {
+    	return "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+    }
+    return "${env.BRANCH_NAME}-dev-${env.BUILD_NUMBER}"
+}
+
+
 pipeline {
     agent { label "UPSTREAM" }
 
@@ -55,6 +63,7 @@ pipeline {
     parameters {
         string(defaultValue: '/scratch/packages/ceph-ansible', description: 'Path to archive packages, branch added ' +
                 'automatically', name: 'BUILD_PKG_ROOT')
+        booleanParam(defaultValue: false, description: 'Create a production build.', name: 'PRODUCTION')
     }
 
     environment {
@@ -64,10 +73,11 @@ pipeline {
 	// a symlik is created in ${WORK_DIR} that points
 	// back to ${WORKSPACE} and then we tar with --dereference
         //	
-	BASE_NAME = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+	BASE_NAME = definePackagName()
 	WORK_DIR= "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 	ARTIFACTS_DST_DIR = "${params.BUILD_PKG_ROOT}/${env.BRANCH_NAME}"
 	ARTIFACTS_TAR = "${env.ARTIFACTS_DST_DIR}/ceph-ansible-${env.BASE_NAME}.tgz"
+	ARTIFACTS_TO_KEEP = nonProductionToKeep
     }
     stages {
         stage('CheckCause') {
@@ -116,6 +126,13 @@ pipeline {
             when { expression { keepgoing } }
             steps {
                 sh "sudo rm -fr ${env.WORK_DIR}"
+            }
+        }
+
+        stage('ArtifactClean') {
+            when { expression { keepgoing && !params.PRODUCTION} && !buildTest}
+            steps {
+                sh "sudo ls -1t | tail -n +${env.ARTIFACTS_TO_KEEP} | xargs rm -f"
             }
         }
     }
