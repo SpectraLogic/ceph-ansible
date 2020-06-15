@@ -60,8 +60,10 @@ pipeline {
     }
 
     parameters {
-        string(defaultValue: '/scratch/packages/ceph-ansible', description: 'Path to archive packages, branch added ' +
-                'automatically', name: 'BUILD_PKG_ROOT')
+        string(defaultValue: '/scratch/packages/ceph-ansible', description: 'Path to package archive, branch added ' +
+                'automatically', name: 'ARCHIVE_ROOT')
+        string(defaultValue: '/scratch/www/local/ceph-ansible', description: 'Path to package repo server ' +
+                '(production only), branch added automatically', name: 'WWW_ROOT')
         booleanParam(defaultValue: false, description: 'Create a production build.', name: 'PRODUCTION')
     }
 
@@ -73,10 +75,14 @@ pipeline {
 	// back to ${WORKSPACE} and then we tar with --dereference
         //	
 	BASE_NAME = definePackageName()
+	TAR_NAME = "ceph-ansible-${env.BASE_NAME}.tgz"
 	WORK_DIR = "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
-	ARTIFACTS_DST_DIR = "${params.BUILD_PKG_ROOT}/${env.BRANCH_NAME}"
-	ARTIFACTS_TAR = "${env.ARTIFACTS_DST_DIR}/ceph-ansible-${env.BASE_NAME}.tgz"
-	NON_PRODUCTION_ARTIFACTS_TO_KEEP = "5"
+
+	ARCHIVE_DST_DIR = "${params.ARCHIVE_ROOT}/${env.BRANCH_NAME}"
+	ARCHIVE_TAR = "${env.ARCHIVE_DST_DIR}/${env.TAR_NAME}"
+	ARCHIVE_NON_PRODUCTION_TOKEEP = "5"
+
+	WWW_DST_DIR = "${params.WWW_ROOT}/${env.BRANCH_NAME}"
     }
     stages {
         stage('CheckCause') {
@@ -115,11 +121,22 @@ pipeline {
         stage('Archive') {
             when { expression { keepgoing && !buildTest } }
             steps {
-                sh "sudo mkdir -pm 777 ${env.ARTIFACTS_DST_DIR}/ || true"
-		sh "sudo tar -czvf ${env.ARTIFACTS_TAR} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
-		sh "sudo chmod 666 ${env.ARTIFACTS_TAR}"
+                sh "sudo mkdir -pm 777 ${env.ARCHIVE_DST_DIR}/ || true"
+                sh "sudo tar -czvf ${env.ARCHIVE_TAR} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
+                sh "sudo chmod 666 ${env.ARCHIVE_TAR}"
             }
         }
+
+        stage('WWWput') {
+            when { expression { keepgoing && params.PRODUCTION && !buildTest } }
+            steps {
+                sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
+                sh "cp -av ${env.ARCHIVE_TAR} ${env.WWW_DST_DIR}/${env.TAR_NAME}"
+                sh "sudo chmod 666 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
+                sh "sudo cd ${env.WWW_DST_DIR} && ln -sf ${env.TAR_NAME} latest"
+            }
+        }
+
 
         stage('PostClean') {
             when { expression { keepgoing } }
@@ -131,7 +148,7 @@ pipeline {
         stage('ArtifactClean') {
             when { expression { keepgoing && !params.PRODUCTION && !buildTest } }
             steps {
-                sh "sudo ls -1t ${env.ARTIFACTS_DST_DIR}/*-dev-*.tgz| tail -n +${env.NON_PRODUCTION_ARTIFACTS_TO_KEEP} | xargs rm -f"
+                sh "sudo ls -1t ${env.ARCHIVE_DST_DIR}/*-dev-*.tgz| tail -n +${env.ARCHIVE_NON_PRODUCTION_TOKEEP} | xargs rm -f"
             }
         }
     }
