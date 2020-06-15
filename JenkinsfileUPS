@@ -136,8 +136,10 @@ pipeline {
 
                 dir("${WWW_DST_DIR}") {
                     sh "ln -sf ${env.TAR_NAME} latest"
+                    sh "echo ${env.TAR_NAME} > latest.txt"
+                    sh "sudo 666 latest.txt"
                 }
-		sudo "rm -f ${env.WWW_DST_DIR}@tmp"
+		sh "sudo rm -fr ${env.WWW_DST_DIR}@tmp"
             }
         }
 
