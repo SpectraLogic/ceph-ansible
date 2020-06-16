@@ -131,7 +131,7 @@ pipeline {
         stage('ArtifactClean') {
             when { expression { keepgoing && !buildTest } }
             steps {
-                sh "sudo ls -1t ${env.WWWW_DST_DIR}/ceph-ansible*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
+                sh "sudo ls -1t ${env.WWW_DST_DIR}/ceph-ansible*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
             }
         }
 
