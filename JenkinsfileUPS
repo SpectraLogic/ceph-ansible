@@ -67,16 +67,17 @@ pipeline {
     environment {
 	// This is phony build; all we want to do is
 	// tar up our ceph-ansible branch so that it untars
-	// under a directory named ${BASE_NAME}. To do this
+	// under a directory named ${RELEASE_NAME}. To do this
 	// a symlik is created in ${WORK_DIR} that points
 	// back to ${WORKSPACE} and then we tar with --dereference
         //	
-	BASE_NAME = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
-	TAR_NAME = "ceph-ansible-${env.BASE_NAME}.tgz"
+	RELEASE_PREFIX = "ceph-ansible-${env.BRANCH_NAME}"
+	RELEASE_NAME = "${env.RELEASE_PREFIX}-${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+	TAR_NAME = "${env.RELEASE_NAME}.tgz"
 	WORK_DIR = "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 
 	WWW_DST_DIR = "${params.WWW_ROOT}/${env.BRANCH_NAME}"
-	WWW_TOKEEP = "26"
+	WWW_TOKEEP = "16" // +1 actual kept
     }
     stages {
         stage('CheckCause') {
@@ -108,7 +109,7 @@ pipeline {
         stage('SymLinkCephAnsible') {
             when { expression { keepgoing } }
             steps {
-                   sh "cd ${env.WORK_DIR} && ln -s ${WORKSPACE} ${env.BASE_NAME}"
+                   sh "cd ${env.WORK_DIR} && ln -s ${WORKSPACE} ${env.RELEASE_NAME}"
             }
         }
 
@@ -116,11 +117,12 @@ pipeline {
             when { expression { keepgoing && !buildTest } }
             steps {
                 sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
-                sh "sudo tar -czvf ${env.WWW_DST_DIR}/${env.TAR_NAME} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.BASE_NAME}"
+                sh "sudo tar -czvf ${env.WWW_DST_DIR}/${env.TAR_NAME} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.RELEASE_NAME}"
                 sh "sudo chmod 664 ${env.WWW_DST_DIR}/${env.TAR_NAME}"
 
                 dir("${WWW_DST_DIR}") {
-                    sh "ln -sf ${env.TAR_NAME} latest"
+                    sh "rm -f latest*"
+                    sh "ln -s ${env.TAR_NAME} latest"
                     sh "echo ${env.TAR_NAME} > latest.txt"
                     sh "sudo chmod 666 latest.txt"
                 }
@@ -131,7 +133,7 @@ pipeline {
         stage('ArtifactClean') {
             when { expression { keepgoing && !buildTest } }
             steps {
-                sh "sudo ls -1t ${env.WWW_DST_DIR}/ceph-ansible*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
+                sh "sudo ls -1t ${env.WWW_DST_DIR}/${env.RELEASE_PREFIX}*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
             }
         }
 
