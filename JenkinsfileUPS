@@ -72,7 +72,7 @@ pipeline {
 	// back to ${WORKSPACE} and then we tar with --dereference
         //	
 	RELEASE_PREFIX = "ceph-ansible-${env.BRANCH_NAME}"
-	RELEASE_NAME = "${env.RELEASE_PREFIX}-${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+	RELEASE_NAME = "${env.RELEASE_PREFIX}-${env.BUILD_NUMBER}"
 	TAR_NAME = "${env.RELEASE_NAME}.tgz"
 	WORK_DIR = "/tmp/ceph-ansible_work/${env.BRANCH_NAME}"
 
