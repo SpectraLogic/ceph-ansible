@@ -1,7 +1,6 @@
 final FAILURE = '#FF0000'
 
 def keepgoing = true
-def buildTest = JOB_NAME.contains("BuildTest")
 
 
 def getPreviousStatus(build) {
@@ -83,7 +82,6 @@ pipeline {
         stage('CheckCause') {
             when {
                 expression {
-                    buildTest &&
                     "${currentBuild.getBuildCauses('jenkins.branch.BranchEventCause').size()}" != "0"
                 }
             }
@@ -114,7 +112,7 @@ pipeline {
         }
 
         stage('Archive') {
-            when { expression { keepgoing && !buildTest } }
+            when { expression { keepgoing } }
             steps {
                 sh "sudo mkdir -pm 777 ${env.WWW_DST_DIR}/ || true"
                 sh "sudo tar -czvf ${env.WWW_DST_DIR}/${env.TAR_NAME} -C ${env.WORK_DIR} --exclude-vcs --dereference ${env.RELEASE_NAME}"
@@ -131,7 +129,7 @@ pipeline {
         }
 
         stage('ArtifactClean') {
-            when { expression { keepgoing && !buildTest } }
+            when { expression { keepgoing } }
             steps {
                 sh "sudo ls -1t ${env.WWW_DST_DIR}/${env.RELEASE_PREFIX}*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
             }
@@ -143,7 +141,6 @@ pipeline {
                 sh "sudo rm -fr ${env.WORK_DIR}"
             }
         }
-
     }
 
     post {
