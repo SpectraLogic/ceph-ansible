@@ -7,7 +7,7 @@ def definePackageName() {
     return "${env.BRANCH_NAME}-dev-${env.BUILD_NUMBER}"
 }
 
-def TriggerOS() {
+def triggerOS() {
     if (params.OS_TRIGGER_BRANCH != 'NONE') {
 	sh "${env.OS_TRIGGER}"
     }
@@ -26,7 +26,7 @@ pipeline {
         string(defaultValue: '/scratch/www/local/ceph-ansible', description: 'Path to package repo server ' +
                 'branch added automatically', name: 'WWW_ROOT')
 
-        string(defaultValue: 'autoUpdate', description: 'Trigger a vailOS build on the specfied branch after a ' +
+        string(defaultValue: 'master', description: 'Trigger a vailOS build on the specfied branch after a ' +
                 'sucessful ceph-ansible build; specify NONE to skip trigger',
                 name: 'OS_TRIGGER_BRANCH')
     }
