@@ -27,7 +27,7 @@ pipeline {
                 'branch added automatically', name: 'WWW_ROOT')
 
         string(defaultValue: 'autoUpdate', description: 'Trigger a vailOS build on the specfied branch after a ' +
-                'sucessful ceph-ansible build; specify NONE to skip trigger'
+                'sucessful ceph-ansible build; specify NONE to skip trigger',
                 name: 'OS_TRIGGER_BRANCH')
     }
 
