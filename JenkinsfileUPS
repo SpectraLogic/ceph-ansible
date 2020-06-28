@@ -7,6 +7,12 @@ def definePackageName() {
     return "${env.BRANCH_NAME}-dev-${env.BUILD_NUMBER}"
 }
 
+def TriggerOS() {
+    if (params.OS_TRIGGER_BRANCH != 'NONE') {
+	sh "${env.OS_TRIGGER}"
+    }
+}
+
 
 pipeline {
     agent { label "UPSTREAM" }
@@ -19,6 +25,10 @@ pipeline {
     parameters {
         string(defaultValue: '/scratch/www/local/ceph-ansible', description: 'Path to package repo server ' +
                 'branch added automatically', name: 'WWW_ROOT')
+
+        string(defaultValue: 'autoUpdate', description: 'Trigger a vailOS build on the specfied branch after a ' +
+                'sucessful ceph-ansible build; specify NONE to skip trigger'
+                name: 'OS_TRIGGER_BRANCH')
     }
 
     environment {
@@ -35,6 +45,11 @@ pipeline {
 
 	WWW_DST_DIR = "${params.WWW_ROOT}/${env.BRANCH_NAME}"
 	WWW_TOKEEP = "16" // +1 actual kept
+
+        TRIGGER_USER = "spectra:11f97b22834dd601a1b7758c82e4233cc4"
+        OS_TRIGGER="curl -X POST http://${env.TRIGGER_USER}@jenkins-master2.eng.sldomain.com/" +
+            "job/SpectraLogic%20GitHub/job/vail_os/job/" +
+            "${params.OS_TRIGGER_BRANCH}/buildWithParameters?BUILD_TRIGGER=Ceph-ansible-${env.BRANCH_NAME}"
     }
     stages {
         stage('Clean') {
@@ -78,6 +93,11 @@ pipeline {
             steps {
                 sh "sudo rm -fr ${env.WORK_DIR}"
             }
+        }
+    }
+    post {
+        success {
+		triggerOS()
         }
     }
 }
