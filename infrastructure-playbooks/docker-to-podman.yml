@@ -27,10 +27,18 @@
     # pre-tasks for following import -
     - name: gather facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       when: not delegate_facts_host | bool or inventory_hostname in groups.get(client_group_name, [])
 
     - name: gather and delegate facts
       setup:
+        gather_subset:
+          - 'all'
+          - '!facter'
+          - '!ohai'
       delegate_to: "{{ item }}"
       delegate_facts: True
       with_items: "{{ groups['all'] | difference(groups.get(client_group_name | default('clients'), [])) }}"
@@ -164,6 +172,16 @@
         name: ceph-rgw
         tasks_from: systemd.yml
       when: inventory_hostname in groups.get(rgw_group_name, [])
+
+    - import_role:
+        name: ceph-crash
+        tasks_from: systemd.yml
+      when: inventory_hostname in groups.get(mon_group_name, []) or
+            inventory_hostname in groups.get(osd_group_name, []) or
+            inventory_hostname in groups.get(mds_group_name, []) or
+            inventory_hostname in groups.get(rgw_group_name, []) or
+            inventory_hostname in groups.get(mgr_group_name, []) or
+            inventory_hostname in groups.get(rbdmirror_group_name, [])
 
     - name: dashboard configuration
       when: dashboard_enabled | bool

@@ -149,7 +149,7 @@ ceph_repository: rhcs
 #ceph_stable_repo: "{{ ceph_mirror }}/debian-{{ ceph_stable_release }}"
 
 #nfs_ganesha_stable: true # use stable repos for nfs-ganesha
-#nfs_ganesha_stable_branch: V3.2-stable
+#nfs_ganesha_stable_branch: V3.3-stable
 #nfs_ganesha_stable_deb_repo: "{{ ceph_mirror }}/nfs-ganesha/deb-{{ nfs_ganesha_stable_branch }}/{{ ceph_stable_release }}"
 
 
@@ -257,7 +257,7 @@ ceph_iscsi_config_dev: false
 
 #ceph_conf_key_directory: /etc/ceph
 
-#ceph_uid: 167
+#ceph_uid: "{{ '64045' if not containerized_deployment | bool and ansible_os_family == 'Debian' else '167' }}"
 
 # Permissions for keyring files in /etc/ceph
 #ceph_keyring_permissions: '0600'
@@ -486,9 +486,14 @@ ceph_iscsi_config_dev: false
 ###############
 # NFS-GANESHA #
 ###############
-
-# Confiure the type of NFS gatway access.  At least one must be enabled for an
-# NFS role to be useful
+#
+# Access type options
+#
+# Enable NFS File access
+# If set to true, then ganesha is set up to export the root of the
+# Ceph filesystem, and ganesha's attribute and directory caching is disabled
+# as much as possible since libcephfs clients also caches the same
+# information.
 #
 # Set this to true to enable File access via NFS.  Requires an MDS role.
 #nfs_file_gw: false
@@ -749,6 +754,7 @@ ceph_docker_registry_auth: true
 # We only need this for SSL (https) connections
 #dashboard_crt: ''
 #dashboard_key: ''
+#dashboard_tls_external: false
 #dashboard_grafana_api_no_ssl_verify: False
 #dashboard_rgw_api_user_id: ceph-dashboard
 #dashboard_rgw_api_admin_resource: ''

@@ -25,6 +25,8 @@
         owner: root
         group: root
         mode: 0440
+        remote_src: "{{ dashboard_tls_external | bool }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: dashboard_crt | length > 0
 
     - name: copy dashboard SSL certificate key
@@ -34,6 +36,8 @@
         owner: root
         group: root
         mode: 0440
+        remote_src: "{{ dashboard_tls_external | bool }}"
+      delegate_to: "{{ groups[mon_group_name][0] }}"
       when: dashboard_key | length > 0
 
     - name: generate and copy self-signed certificate

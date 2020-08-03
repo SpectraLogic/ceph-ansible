@@ -545,10 +545,19 @@ def run_module():
     # Test if the key exists, if it does we skip its creation
     # We only want to run this check when a key needs to be added
     # There is no guarantee that any cluster is running and we don't need one
-    key_exist = 1
     _secret = secret
     _caps = caps
-    if (state in ["present", "update", "info"]):
+
+    user = "client.admin"
+    user_key = os.path.join(
+        "/etc/ceph/" + cluster + ".client.admin.keyring")
+    output_format = "json"
+    _info_key = []
+    rc, cmd, out, err = exec_commands(
+        module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+    key_exist = rc
+
+    if (state in ["present", "update"]):
         # if dest is not a directory, the user wants to change the file's name
         # (e,g: /etc/ceph/ceph.mgr.ceph-mon2.keyring)
         if not os.path.isdir(dest):
@@ -564,15 +573,7 @@ def run_module():
 
         file_args['path'] = file_path
 
-        if import_key or state == "info":
-            user = "client.admin"
-            user_key = os.path.join(
-                "/etc/ceph/" + cluster + ".client.admin.keyring")
-            output_format = "json"
-            _info_key = []
-            rc, cmd, out, err = exec_commands(
-                module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
-            key_exist = rc
+        if import_key:
             if key_exist == 0:
                 _info_key = json.loads(out)
                 if not secret:
@@ -620,21 +621,25 @@ def run_module():
         module.set_fs_attributes_if_different(file_args, False)
 
     elif state == "absent":
-        rc, cmd, out, err = exec_commands(
-            module, delete_key(cluster, name, container_image))
+        if key_exist == 0:
+            rc, cmd, out, err = exec_commands(
+                module, delete_key(cluster, name, container_image))
+            if rc == 0:
+                changed = True
+        else:
+            rc = 0
 
     elif state == "info":
-        if rc != 0:
-            result["stdout"] = "skipped, since {0} does not exist".format(name)
-            result['rc'] = 0
-            module.exit_json(**result)
-
         user = "client.admin"
         keyring_filename = cluster + '.' + user + '.keyring'
         user_key = os.path.join("/etc/ceph/", keyring_filename)
         output_format = "json"
         rc, cmd, out, err = exec_commands(
             module, info_key(cluster, name, user, user_key, output_format, container_image))  # noqa E501
+        if rc != 0:
+            result["stdout"] = "skipped, since {0} does not exist".format(name)
+            result['rc'] = 0
+            module.exit_json(**result)
 
     elif state == "list":
         user = "client.admin"
