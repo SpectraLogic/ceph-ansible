@@ -75,7 +75,7 @@ pipeline {
 
                 dir("${WWW_DST_DIR}") {
                     sh "rm -f latest*"
-                    sh "ln -s ${env.TAR_NAME} latest"
+                    sh "ln -s ${env.TAR_NAME} latest.tgz"
                     sh "echo ${env.TAR_NAME} > latest.txt"
                     sh "sudo chmod 666 latest.txt"
                 }
@@ -85,7 +85,7 @@ pipeline {
 
         stage('ArtifactClean') {
             steps {
-                sh "sudo ls -1t ${env.WWW_DST_DIR}/${env.RELEASE_PREFIX}*.tgz| tail -n +${env.WWW_TOKEEP} | xargs rm -f"
+                sh "sudo ls -1t ${env.WWW_DST_DIR}/${env.RELEASE_PREFIX}*.tgz| grep -v latest | tail -n +${env.WWW_TOKEEP} | xargs rm -f"
             }
         }
 
